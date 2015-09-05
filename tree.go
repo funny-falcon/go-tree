@@ -107,11 +107,44 @@ func (t *Tree) Next(i int) int {
 		return i
 	}
 	for node.parent() != null {
-		dir := t.dir(i, node.parent())
+		pix := node.parent()
+		dir := t.dir(i, pix)
 		if dir == left {
-			return node.parent()
+			return pix
 		}
-		i, node = node.parent(), &t.nodes[node.parent()]
+		i, node = pix, &t.nodes[pix]
+	}
+	panic("tree broken")
+}
+
+// Prev returns index of previos in-order element.
+// if argument is Tree.Len(), then return index of maximal element.
+// returns -1 on finish.
+func (t *Tree) Prev(i int) int {
+	if i > len(t.nodes) {
+		panic("Tree index overflow")
+	}
+	if i == -1 || i == t.min {
+		return -1
+	}
+	if i == len(t.nodes) {
+		return t.max
+	}
+	node := &t.nodes[i]
+	if node.left() != null {
+		i = node.left()
+		for t.nodes[i].right() != null {
+			i = t.nodes[i].right()
+		}
+		return i
+	}
+	for node.parent() != null {
+		pix := node.parent()
+		dir := t.dir(i, pix)
+		if dir == right {
+			return pix
+		}
+		i, node = pix, &t.nodes[pix]
 	}
 	panic("tree broken")
 }
@@ -198,6 +231,26 @@ func (t *Tree) Delete(data sort.Interface, ix int) int {
 		   but it will be restored after complete */
 	}
 	return t.del(data, node, ix, next)
+}
+
+// DeleteAndPrev removes element from a tree and return index of next in-order element
+func (t *Tree) DeleteAndPrev(data sort.Interface, ix int) int {
+	if ix < 0 || ix >= len(t.nodes) {
+		panic("Tree.Delete out of range")
+	}
+	if len(t.nodes) == 0 {
+		t.nodes = t.nodes[:0]
+		return 0
+	}
+	node := &t.nodes[ix]
+	prev := t.Prev(ix)
+	if node.left() != null && node.right() != null {
+		data.Swap(ix, prev)
+		prev, ix, node = ix, prev, &t.nodes[prev]
+		/* at this moment order is temporary broken,
+		   but it will be restored after complete */
+	}
+	return t.del(data, node, ix, prev)
 }
 
 func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
