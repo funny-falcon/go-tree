@@ -15,30 +15,6 @@ type node struct {
 	height  int8
 }
 
-func (n *node) parent() int {
-	return int(n._parent)
-}
-
-func (n *node) left() int {
-	return int(n._left)
-}
-
-func (n *node) right() int {
-	return int(n._right)
-}
-
-func (n *node) set_parent(i int) {
-	n._parent = int32(i)
-}
-
-func (n *node) set_left(i int) {
-	n._left = int32(i)
-}
-
-func (n *node) set_right(i int) {
-	n._right = int32(i)
-}
-
 func (n *node) link(i direction) int {
 	if i == right {
 		return int(n._right)

@@ -11,7 +11,7 @@ var _ = fmt.Println
 
 func check(t *testing.T, data sort.Interface, tree *Tree, ix int) int8 {
 	node := &tree.nodes[ix]
-	l, r := node.left(), node.right()
+	l, r := int(node._left), int(node._right)
 	var lh, rh int8
 	if l != null {
 		if data.Less(ix, l) {
@@ -23,6 +23,7 @@ func check(t *testing.T, data sort.Interface, tree *Tree, ix int) int8 {
 	}
 	if r != null {
 		if data.Less(r, ix) {
+			fmt.Println(data, tree)
 			t.Fatalf("%d < %d", r, ix)
 		}
 		rh = check(t, data, tree, r)
@@ -38,11 +39,19 @@ func check(t *testing.T, data sort.Interface, tree *Tree, ix int) int8 {
 }
 
 func check_iter(t *testing.T, data sort.Interface, tree *Tree) {
+	if tree.Min() != tree.Next(-1) {
+		t.Fatalf("min or next is wrong")
+	}
+	cnt := 0
 	lesser := tree.Min()
 	for ix := tree.Next(lesser); ix < tree.Len(); lesser, ix = ix, tree.Next(ix) {
 		if data.Less(ix, lesser) {
 			t.Fatalf("%d < %d", ix, lesser)
 		}
+		cnt++
+	}
+	if cnt != tree.Len()-1 {
+		t.Fatalf("Iteration: %d < %d", cnt+1, tree.Len())
 	}
 }
 
@@ -65,27 +74,34 @@ func Test_Insert(t *testing.T) {
 	if tree.Max() != len(data)-1 {
 		t.Fatalf("Max is not %d", len(data)-1)
 	}
-	tree = &Tree{}
-	data = sort.IntSlice{}
-	for i := 0; i < 100; i++ {
-		v := rand.Intn(1000)
-		ix := tree.Search(func(i int) bool {
-			return data[i] >= v
-		})
-		if ix < len(data) && data[ix] == v {
-			for j := 0; j < len(data); j++ {
-				if data[j] == v && j != ix {
-					t.Fatalf("missed duplicate")
+	for k := 0; k < 1000; k++ {
+		tree = &Tree{}
+		data = sort.IntSlice{}
+		for i := 0; i < 100; i++ {
+			v := rand.Intn(1000)
+			ix := tree.Search(func(i int) bool {
+				return data[i] >= v
+			})
+			if ix < len(data) && data[ix] == v {
+				for j := 0; j < len(data); j++ {
+					if data[j] == v && j != ix {
+						t.Fatalf("missed duplicate")
+					}
 				}
+				continue
 			}
-			continue
+			data = append(data, v)
+			if k&1 == 0 {
+				tree.Insert(data)
+			} else {
+				//fmt.Println(data, tree, ix)
+				tree.InsertBefore(data, ix)
+			}
+			check(t, data, tree, tree.root)
+			check_iter(t, data, tree)
 		}
-		data = append(data, v)
-		tree.Insert(data)
-		check(t, data, tree, tree.root)
-		check_iter(t, data, tree)
+		test_insert(t, data)
 	}
-	test_insert(t, data)
 }
 
 func test_delete(t *testing.T, data sort.IntSlice, tree *Tree, maxn int) {
@@ -139,7 +155,7 @@ func Test_Delete(t *testing.T) {
 
 type bigstruct struct {
 	I  int
-	Sl [1][]int
+	Sl [2][]int
 }
 
 type benchslice []bigstruct
@@ -195,9 +211,22 @@ func benchmark_TreeSearch(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
 			v := rand.Intn(1 << 30)
-			tree.Search(func(i int) bool {
+			ix := tree.Search(func(i int) bool {
 				return data[i].I >= v
 			})
+			if ix < tree.Len() {
+				if data[ix].I < v {
+					b.Fatalf("search failed")
+				}
+				prev := tree.Prev(ix)
+				if prev > -1 && data[prev].I >= v {
+					b.Fatalf("search failed")
+				}
+			} else {
+				if data[tree.Max()].I >= v {
+					b.Fatalf("search failed")
+				}
+			}
 		}
 	}
 }
@@ -216,9 +245,21 @@ func benchmark_SortSearch(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
 			v := rand.Intn(1 << 30)
-			sort.Search(len(data), func(i int) bool {
+			ix := sort.Search(len(data), func(i int) bool {
 				return data[i].I >= v
 			})
+			if ix < len(data) {
+				if data[ix].I < v {
+					b.Fatalf("search failed")
+				}
+				if ix > 0 && data[ix-1].I >= v {
+					b.Fatalf("search failed")
+				}
+			} else {
+				if data[len(data)-1].I >= v {
+					b.Fatalf("search failed")
+				}
+			}
 		}
 	}
 }

@@ -49,14 +49,14 @@ func (t *Tree) Search(pred func(i int) bool) int {
 		node := &t.nodes[now]
 		if pred(now) {
 			last_true = now
-			if node.left() == null {
+			if node._left == null {
 				return now
 			}
-			now = node.left()
-		} else if node.right() == null {
+			now = int(node._left)
+		} else if node._right == null {
 			return last_true
 		} else {
-			now = node.right()
+			now = int(node._right)
 		}
 	}
 }
@@ -73,14 +73,14 @@ func (t *Tree) SearchLast(pred func(i int) bool) int {
 		node := &t.nodes[now]
 		if pred(now) {
 			last_true = now
-			if node.right() == null {
+			if node._right == null {
 				return now
 			}
-			now = node.right()
-		} else if node.left() == null {
+			now = int(node._right)
+		} else if node._left == null {
 			return last_true
 		} else {
-			now = node.left()
+			now = int(node._left)
 		}
 	}
 }
@@ -99,15 +99,15 @@ func (t *Tree) Next(i int) int {
 		return t.min
 	}
 	node := &t.nodes[i]
-	if node.right() != null {
-		i = node.right()
-		for t.nodes[i].left() != null {
-			i = t.nodes[i].left()
+	if node._right != null {
+		i = int(node._right)
+		for t.nodes[i]._left != null {
+			i = int(t.nodes[i]._left)
 		}
 		return i
 	}
-	for node.parent() != null {
-		pix := node.parent()
+	for node._parent != null {
+		pix := int(node._parent)
 		dir := t.dir(i, pix)
 		if dir == left {
 			return pix
@@ -131,15 +131,15 @@ func (t *Tree) Prev(i int) int {
 		return t.max
 	}
 	node := &t.nodes[i]
-	if node.left() != null {
-		i = node.left()
-		for t.nodes[i].right() != null {
-			i = t.nodes[i].right()
+	if node._left != null {
+		i = int(node._left)
+		for t.nodes[i]._right != null {
+			i = int(t.nodes[i]._right)
 		}
 		return i
 	}
-	for node.parent() != null {
-		pix := node.parent()
+	for node._parent != null {
+		pix := int(node._parent)
 		dir := t.dir(i, pix)
 		if dir == right {
 			return pix
@@ -171,7 +171,7 @@ func (t *Tree) Insert(data sort.Interface) {
 		curnode = &t.nodes[cur]
 	}
 	node := &t.nodes[ix]
-	node.set_parent(cur)
+	node._parent = int32(cur)
 	curnode.set_link(dir, ix)
 	if dir == right {
 		if cur == t.max {
@@ -188,9 +188,6 @@ func (t *Tree) Insert(data sort.Interface) {
 func (t *Tree) InsertBefore(data sort.Interface, cur int) {
 	ix := len(t.nodes)
 	dir := left
-	if cur == len(t.nodes) {
-		dir, cur = right, t.max
-	}
 	t.nodes = append(t.nodes, node{null, null, null, 1})
 	if ix == 0 {
 		if cur != 0 {
@@ -199,9 +196,20 @@ func (t *Tree) InsertBefore(data sort.Interface, cur int) {
 		t.root, t.min, t.max = 0, 0, 0
 		return
 	}
-	curnode := &t.nodes[cur]
+	var curnode *node
+	if cur == ix {
+		dir, cur = right, t.max
+		curnode = &t.nodes[cur]
+	} else {
+		curnode = &t.nodes[cur]
+		if curnode._left != null {
+			dir = right
+			cur = t.Prev(cur)
+			curnode = &t.nodes[cur]
+		}
+	}
 	node := &t.nodes[ix]
-	node.set_parent(cur)
+	node._parent = int32(cur)
 	curnode.set_link(dir, ix)
 	if dir == right {
 		if cur == t.max {
@@ -224,7 +232,7 @@ func (t *Tree) Delete(data sort.Interface, ix int) int {
 	}
 	node := &t.nodes[ix]
 	next := t.Next(ix)
-	if node.left() != null && node.right() != null {
+	if node._left != null && node._right != null {
 		data.Swap(ix, next)
 		next, ix, node = ix, next, &t.nodes[next]
 		/* at this moment order is temporary broken,
@@ -244,7 +252,7 @@ func (t *Tree) DeleteAndPrev(data sort.Interface, ix int) int {
 	}
 	node := &t.nodes[ix]
 	prev := t.Prev(ix)
-	if node.left() != null && node.right() != null {
+	if node._left != null && node._right != null {
 		data.Swap(ix, prev)
 		prev, ix, node = ix, prev, &t.nodes[prev]
 		/* at this moment order is temporary broken,
@@ -254,22 +262,22 @@ func (t *Tree) DeleteAndPrev(data sort.Interface, ix int) int {
 }
 
 func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
-	pix := node.parent()
+	pix := int(node._parent)
 	if pix == null {
-		if node.left() == null {
-			rix := node.right()
+		if node._left == null {
+			rix := int(node._right)
 			t.root = rix
 			if rix != null {
-				t.nodes[rix].set_parent(null)
+				t.nodes[rix]._parent = null
 			}
 			if t.min == ix {
 				t.min = rix
 			}
 		} else {
-			lix := node.left()
+			lix := int(node._left)
 			t.root = lix
 			if lix != null {
-				t.nodes[lix].set_parent(null)
+				t.nodes[lix]._parent = null
 			}
 			if t.max == ix {
 				t.max = lix
@@ -279,11 +287,11 @@ func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 	} else {
 		pdir := t.dir(ix, pix)
 		parent := &t.nodes[pix]
-		if node.left() == null {
-			rix := node.right()
+		if node._left == null {
+			rix := int(node._right)
 			parent.set_link(pdir, rix)
 			if rix != null {
-				t.nodes[rix].set_parent(pix)
+				t.nodes[rix]._parent = int32(pix)
 				if t.min == ix {
 					t.min = rix
 				}
@@ -296,10 +304,10 @@ func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 				}
 			}
 		} else {
-			lix := node.left()
+			lix := int(node._left)
 			parent.set_link(pdir, lix)
 			if lix != null {
-				t.nodes[lix].set_parent(pix)
+				t.nodes[lix]._parent = int32(pix)
 				if t.max == ix {
 					t.max = lix
 				}
@@ -327,30 +335,30 @@ func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 }
 
 func (t *Tree) fixlinks(inode *node, i, j int) {
-	if inode.parent() != null {
-		parent := &t.nodes[inode.parent()]
-		dir := direction(parent.right() == i)
+	if inode._parent != null {
+		parent := &t.nodes[inode._parent]
+		dir := direction(int(parent._right) == i)
 		parent.set_link(dir, j)
 	} else if t.root == i {
 		t.root = j
 	} else {
 		panic("tree broken")
 	}
-	if inode.left() != null {
-		lnode := &t.nodes[inode.left()]
-		if lnode.parent() != i {
+	if inode._left != null {
+		lnode := &t.nodes[inode._left]
+		if int(lnode._parent) != i {
 			panic("tree broken")
 		}
-		lnode.set_parent(j)
+		lnode._parent = int32(j)
 	} else if t.min == i {
 		t.min = j
 	}
-	if inode.right() != null {
-		rnode := &t.nodes[inode.right()]
-		if rnode.parent() != i {
+	if inode._right != null {
+		rnode := &t.nodes[inode._right]
+		if int(rnode._parent) != i {
 			panic("tree broken")
 		}
-		rnode.set_parent(j)
+		rnode._parent = int32(j)
 	} else if t.max == i {
 		t.max = j
 	}
@@ -359,7 +367,7 @@ func (t *Tree) fixlinks(inode *node, i, j int) {
 func (t *Tree) balance(cur int) {
 	for cur != null {
 		node := &t.nodes[cur]
-		lh, rh := t.height(node.left()), t.height(node.right())
+		lh, rh := t.height(node._left), t.height(node._right)
 		var dir direction
 		if lh < rh-1 {
 			dir = right
@@ -367,27 +375,27 @@ func (t *Tree) balance(cur int) {
 			dir = left
 		} else {
 			node.height = max_i8(lh, rh) + 1
-			cur = node.parent()
+			cur = int(node._parent)
 			continue
 		}
 		chld := node.link(dir)
 		chnode := &t.nodes[chld]
 		hs := [2]int8{
-			t.height(chnode.link(!dir)),
-			t.height(chnode.link(dir))}
+			t.height(int32(chnode.link(!dir))),
+			t.height(int32(chnode.link(dir)))}
 		if hs[1]-hs[0] < 0 {
 			/* rotate child */
 			t.rotate(chld, !dir)
 		}
 		t.rotate(cur, dir)
-		cur = node.parent()
+		cur = int(node._parent)
 	}
 }
 
 // rotate tree node to direction
 func (t *Tree) rotate(ix int, dir direction) {
 	node := &t.nodes[ix]
-	p := node.parent()
+	p := node._parent
 	ch := node.link(dir)
 	if ch == null {
 		panic("wrong rotation direction")
@@ -395,16 +403,16 @@ func (t *Tree) rotate(ix int, dir direction) {
 	chnode := &t.nodes[ch]
 	node.set_link(dir, chnode.link(!dir))
 	if node.link(dir) != null {
-		t.nodes[node.link(dir)].set_parent(ix)
+		t.nodes[node.link(dir)]._parent = int32(ix)
 	}
 	chnode.set_link(!dir, ix)
-	node.set_parent(ch)
-	chnode.set_parent(p)
+	node._parent = int32(ch)
+	chnode._parent = int32(p)
 	t.fixheight(node)
 	t.fixheight(chnode)
 	if p != null {
 		pnode := &t.nodes[p]
-		pdir := direction(pnode.right() == ix)
+		pdir := direction(int(pnode._right) == ix)
 		pnode.set_link(pdir, ch)
 		t.fixheight(pnode)
 	} else {
@@ -413,11 +421,11 @@ func (t *Tree) rotate(ix int, dir direction) {
 }
 
 func (t *Tree) fixheight(n *node) {
-	lh, rh := t.height(n.left()), t.height(n.right())
+	lh, rh := t.height(n._left), t.height(n._right)
 	n.height = max_i8(lh, rh) + 1
 }
 
-func (t *Tree) height(ix int) int8 {
+func (t *Tree) height(ix int32) int8 {
 	if ix == null {
 		return 0
 	}
@@ -426,9 +434,9 @@ func (t *Tree) height(ix int) int8 {
 
 func (t *Tree) dir(i, ipar int) direction {
 	parent := &t.nodes[ipar]
-	if parent.left() == i {
+	if int(parent._left) == i {
 		return left
-	} else if parent.right() == i {
+	} else if int(parent._right) == i {
 		return right
 	} else {
 		panic("tree broken")
@@ -437,8 +445,8 @@ func (t *Tree) dir(i, ipar int) direction {
 
 func (t *Tree) bal(ix int) int8 {
 	node := &t.nodes[ix]
-	lh := t.height(node.left())
-	rh := t.height(node.right())
+	lh := t.height(node._left)
+	rh := t.height(node._right)
 	return lh - rh
 }
 
