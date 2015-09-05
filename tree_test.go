@@ -148,20 +148,56 @@ func (b benchslice) Len() int           { return len(b) }
 func (b benchslice) Less(i, j int) bool { return b[i].I < b[j].I }
 func (b benchslice) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 
+func random_tree(data *benchslice, tree *Tree, n int) {
+	for j := 0; j < n; j++ {
+		v := rand.Intn(1 << 30)
+		ix := tree.Search(func(i int) bool {
+			return (*data)[i].I >= v
+		})
+		if ix < tree.Len() && (*data)[ix].I == v {
+			j--
+			continue
+		}
+		*data = append(*data, bigstruct{I: v})
+		tree.InsertBefore(*data, ix)
+	}
+}
+
+func random_slice(data *benchslice, n int) {
+	for j := 0; j < n; j++ {
+		v := rand.Intn(1 << 30)
+		ix := sort.Search(len(*data), func(i int) bool {
+			return (*data)[i].I >= v
+		})
+		if ix < len(*data) && (*data)[ix].I == v {
+			j--
+			continue
+		}
+		*data = append(*data, bigstruct{})
+		copy((*data)[ix+1:], (*data)[ix:])
+		(*data)[ix] = bigstruct{I: v}
+	}
+}
+
 func benchmark_TreeInsert(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
 		data := benchslice{}
 		tree := Tree{}
+		random_tree(&data, &tree, n)
+	}
+}
+
+func benchmark_TreeSearch(b *testing.B, n int) {
+	data := benchslice{}
+	tree := Tree{}
+	random_tree(&data, &tree, n)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
 			v := rand.Intn(1 << 30)
-			ix := tree.Search(func(i int) bool {
+			tree.Search(func(i int) bool {
 				return data[i].I >= v
 			})
-			if ix < tree.Len() && data[ix].I == v {
-				continue
-			}
-			data = append(data, bigstruct{I: v})
-			tree.InsertBefore(data, ix)
 		}
 	}
 }
@@ -169,26 +205,41 @@ func benchmark_TreeInsert(b *testing.B, n int) {
 func benchmark_SortInsert(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
 		data := benchslice{}
+		random_slice(&data, n)
+	}
+}
+
+func benchmark_SortSearch(b *testing.B, n int) {
+	data := benchslice{}
+	random_slice(&data, n)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
 			v := rand.Intn(1 << 30)
-			ix := sort.Search(len(data), func(i int) bool {
+			sort.Search(len(data), func(i int) bool {
 				return data[i].I >= v
 			})
-			if ix < len(data) && data[ix].I == v {
-				continue
-			}
-			data = append(data, bigstruct{})
-			copy(data[ix+1:], data[ix:])
-			data[ix] = bigstruct{I: v}
 		}
 	}
 }
 
+func Benchmark_TreeInsert10(b *testing.B)    { benchmark_TreeInsert(b, 10) }
 func Benchmark_TreeInsert100(b *testing.B)   { benchmark_TreeInsert(b, 100) }
 func Benchmark_TreeInsert1000(b *testing.B)  { benchmark_TreeInsert(b, 1000) }
 func Benchmark_TreeInsert10000(b *testing.B) { benchmark_TreeInsert(b, 10000) }
 func Benchmark_TreeInsert30000(b *testing.B) { benchmark_TreeInsert(b, 30000) }
+func Benchmark_TreeSearch10(b *testing.B)    { benchmark_TreeSearch(b, 10) }
+func Benchmark_TreeSearch100(b *testing.B)   { benchmark_TreeSearch(b, 100) }
+func Benchmark_TreeSearch1000(b *testing.B)  { benchmark_TreeSearch(b, 1000) }
+func Benchmark_TreeSearch10000(b *testing.B) { benchmark_TreeSearch(b, 10000) }
+func Benchmark_TreeSearch30000(b *testing.B) { benchmark_TreeSearch(b, 30000) }
+func Benchmark_SortInsert10(b *testing.B)    { benchmark_SortInsert(b, 10) }
 func Benchmark_SortInsert100(b *testing.B)   { benchmark_SortInsert(b, 100) }
 func Benchmark_SortInsert1000(b *testing.B)  { benchmark_SortInsert(b, 1000) }
 func Benchmark_SortInsert10000(b *testing.B) { benchmark_SortInsert(b, 10000) }
 func Benchmark_SortInsert30000(b *testing.B) { benchmark_SortInsert(b, 30000) }
+func Benchmark_SortSearch10(b *testing.B)    { benchmark_SortSearch(b, 10) }
+func Benchmark_SortSearch100(b *testing.B)   { benchmark_SortSearch(b, 100) }
+func Benchmark_SortSearch1000(b *testing.B)  { benchmark_SortSearch(b, 1000) }
+func Benchmark_SortSearch10000(b *testing.B) { benchmark_SortSearch(b, 10000) }
+func Benchmark_SortSearch30000(b *testing.B) { benchmark_SortSearch(b, 30000) }

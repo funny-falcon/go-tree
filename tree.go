@@ -8,16 +8,19 @@ import "fmt"
 var _ = fmt.Println
 
 // Tree provides balanced tree structure
-// which is index to external sort.Interface
+// which keeps order of is external sort.Interface
 type Tree struct {
 	root, min, max int
 	nodes          []node
 }
 
+// Len returns number of indexed elements
 func (t *Tree) Len() int {
 	return len(t.nodes)
 }
 
+// Min returns index of minimum element
+// panics if called on empty tree
 func (t *Tree) Min() int {
 	if len(t.nodes) == 0 {
 		panic("Tree.Min should not be called on empty tree")
@@ -25,6 +28,8 @@ func (t *Tree) Min() int {
 	return t.min
 }
 
+// Max returns index of maximum element
+// panics if called on empty tree
 func (t *Tree) Max() int {
 	if len(t.nodes) == 0 {
 		panic("Tree.Max should not be called on empty tree")
@@ -80,6 +85,9 @@ func (t *Tree) SearchLast(pred func(i int) bool) int {
 	}
 }
 
+// Next returns index of next in-order element.
+// if argument is -1, then return index of minimal element.
+// returns t.Len() on finish.
 func (t *Tree) Next(i int) int {
 	if i > len(t.nodes) {
 		panic("Tree index overflow")
@@ -108,10 +116,8 @@ func (t *Tree) Next(i int) int {
 	panic("tree broken")
 }
 
-// Insert encounts new element added to sort.Interface
-// You should first append element to sort.Interface.
-// You should not put element with key equal to existed key,
-// this will cause runtime panic.
+// Insert adds in-order element of sort.Interface at index Tree.Len()
+// You should not put element with key equal to existed key.
 func (t *Tree) Insert(data sort.Interface) {
 	ix := len(t.nodes)
 	t.nodes = append(t.nodes, node{null, null, null, 1})
@@ -144,6 +150,8 @@ func (t *Tree) Insert(data sort.Interface) {
 	t.balance(cur)
 }
 
+// InsertBefore adds new element at specified position.
+// It trust you and doesn't check insertion position
 func (t *Tree) InsertBefore(data sort.Interface, cur int) {
 	ix := len(t.nodes)
 	dir := left
@@ -189,6 +197,10 @@ func (t *Tree) Delete(data sort.Interface, ix int) int {
 		/* at this moment order is temporary broken,
 		   but it will be restored after complete */
 	}
+	return t.del(data, node, ix, next)
+}
+
+func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 	pix := node.parent()
 	if pix == null {
 		if node.left() == null {
