@@ -23,7 +23,6 @@ func check(t *testing.T, data sort.Interface, tree *Tree, ix int) int8 {
 	}
 	if r != null {
 		if data.Less(r, ix) {
-			fmt.Println(data, tree)
 			t.Fatalf("%d < %d", r, ix)
 		}
 		rh = check(t, data, tree, r)
@@ -94,7 +93,6 @@ func Test_Insert(t *testing.T) {
 			if k&1 == 0 {
 				tree.Insert(data)
 			} else {
-				//fmt.Println(data, tree, ix)
 				tree.InsertBefore(data, ix)
 			}
 			check(t, data, tree, tree.root)

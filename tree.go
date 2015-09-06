@@ -1,11 +1,25 @@
 // tree provides balanced tree structure which acts as index
-// to sort.Interface and could be used for searching like sort.Search
+// for sort.Interface and could be used for searching like sort.Search
+//
+//     data := sort.IntSlice{}
+//     tree := &tree.Tree{}
+//     for i:=0; i<N; i++ {
+//         data = append(data, rand.Intn(1<<30))
+//         tree.Insert(data)
+//     }
+//
+//     v := rand.Intn(1<<30)
+//     ix := tree.Search(func(i int) bool {
+//         return data[i] >= v
+//     })
+//
+//     fmt.Println("Min:", data[tree.Min()], " Max:", data[tree.Max()])
+//     for ix := tree.Next(-1); ix < tree.Len(); ix = tree.Next(ix) {
+//         fmt.Printf("%d ", data[ix])
+//     }
 package tree
 
 import "sort"
-import "fmt"
-
-var _ = fmt.Println
 
 // Tree provides balanced tree structure
 // which keeps order of is external sort.Interface
