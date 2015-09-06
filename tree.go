@@ -1,4 +1,4 @@
-// tree provides balanced tree structure which acts as index
+// tree provides balanced tree structure which acts as external index
 // for sort.Interface and could be used for searching like sort.Search
 //
 //     data := sort.IntSlice{}
@@ -12,11 +12,14 @@
 //     ix := tree.Search(func(i int) bool {
 //         return data[i] >= v
 //     })
+//     fmt.Println("First greater or equal: data[%d] = %d > %d", ix, data[ix], v)
 //
 //     fmt.Println("Min:", data[tree.Min()], " Max:", data[tree.Max()])
 //     for ix := tree.Next(-1); ix < tree.Len(); ix = tree.Next(ix) {
 //         fmt.Printf("%d ", data[ix])
 //     }
+//
+// Limitation: index is limited to int32, so that maximum size is 2**31-1
 package tree
 
 import "sort"
@@ -167,6 +170,9 @@ func (t *Tree) Prev(i int) int {
 // You should not put element with key equal to existed key.
 func (t *Tree) Insert(data sort.Interface) {
 	ix := len(t.nodes)
+	if ix == MaxSize {
+		panic("tree size exceed maximum")
+	}
 	t.nodes = append(t.nodes, node{null, null, null, 1})
 	if ix == 0 {
 		t.root, t.min, t.max = 0, 0, 0
@@ -198,11 +204,14 @@ func (t *Tree) Insert(data sort.Interface) {
 }
 
 // InsertBefore adds new element at specified position.
-// It trust you and doesn't check insertion position
-func (t *Tree) InsertBefore(data sort.Interface, cur int) {
+// It trust you and doesn't check insertion position.
+func (t *Tree) InsertBefore(cur int) {
 	ix := len(t.nodes)
-	dir := left
+	if ix == MaxSize {
+		panic("tree size exceed maximum")
+	}
 	t.nodes = append(t.nodes, node{null, null, null, 1})
+	dir := left
 	if ix == 0 {
 		if cur != 0 {
 			panic("InsertBefore on empty tree accepts only 0")
@@ -273,6 +282,32 @@ func (t *Tree) DeleteAndPrev(data sort.Interface, ix int) int {
 		   but it will be restored after complete */
 	}
 	return t.del(data, node, ix, prev)
+}
+
+// LeaveSorted breaks link between Tree and sort.Interface
+// and leaves sort.Interface sorted.
+func (t *Tree) LeaveSorted(data sort.Interface, ix int) {
+	for i := t.Len(); i > 0; i-- {
+		t.Delete(data, t.max)
+	}
+}
+
+// Init fills tree structure accordantly to data in sort.Inteface
+func (t *Tree) Init(data sort.Interface) {
+	*t = Tree{}
+	t.nodes = make([]node, 0, data.Len())
+	for i := data.Len(); i > 0; i-- {
+		t.Insert(data)
+	}
+}
+
+// InitSorted fills tree structure assuming data is sorted
+func (t *Tree) InitSorted(size int) {
+	*t = Tree{}
+	t.nodes = make([]node, 0, size)
+	for i := 0; i < size; i++ {
+		t.InsertBefore(i)
+	}
 }
 
 func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {

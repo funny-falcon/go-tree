@@ -2,6 +2,8 @@ package tree
 
 type direction bool
 
+const MaxSize = (1 << 30) - 1
+
 const (
 	left  = direction(false)
 	right = direction(true)

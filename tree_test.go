@@ -93,7 +93,7 @@ func Test_Insert(t *testing.T) {
 			if k&1 == 0 {
 				tree.Insert(data)
 			} else {
-				tree.InsertBefore(data, ix)
+				tree.InsertBefore(ix)
 			}
 			check(t, data, tree, tree.root)
 			check_iter(t, data, tree)
@@ -173,7 +173,7 @@ func random_tree(data *benchslice, tree *Tree, n int) {
 			continue
 		}
 		*data = append(*data, bigstruct{I: v})
-		tree.InsertBefore(*data, ix)
+		tree.InsertBefore(ix)
 	}
 }
 
@@ -229,6 +229,20 @@ func benchmark_TreeSearch(b *testing.B, n int) {
 	}
 }
 
+func benchmark_TreeSort(b *testing.B, n int) {
+	for i := 0; i < b.N; i++ {
+		data := benchslice{}
+		tree := Tree{}
+		random_tree(&data, &tree, n)
+		for j := 0; j < n; j++ {
+			tree.Delete(data, tree.Max())
+		}
+		if !sort.IsSorted(data) {
+			panic("not sorted")
+		}
+	}
+}
+
 func benchmark_SortInsert(b *testing.B, n int) {
 	for i := 0; i < b.N; i++ {
 		data := benchslice{}
@@ -262,6 +276,19 @@ func benchmark_SortSearch(b *testing.B, n int) {
 	}
 }
 
+func benchmark_SortSort(b *testing.B, n int) {
+	for i := 0; i < b.N; i++ {
+		data := benchslice{}
+		for j := 0; j < n; j++ {
+			data = append(data, bigstruct{I: rand.Intn(1 << 30)})
+		}
+		sort.Sort(data)
+		if !sort.IsSorted(data) {
+			panic("not sorted")
+		}
+	}
+}
+
 func Benchmark_TreeInsert10(b *testing.B)    { benchmark_TreeInsert(b, 10) }
 func Benchmark_TreeInsert100(b *testing.B)   { benchmark_TreeInsert(b, 100) }
 func Benchmark_TreeInsert1000(b *testing.B)  { benchmark_TreeInsert(b, 1000) }
@@ -272,6 +299,11 @@ func Benchmark_TreeSearch100(b *testing.B)   { benchmark_TreeSearch(b, 100) }
 func Benchmark_TreeSearch1000(b *testing.B)  { benchmark_TreeSearch(b, 1000) }
 func Benchmark_TreeSearch10000(b *testing.B) { benchmark_TreeSearch(b, 10000) }
 func Benchmark_TreeSearch30000(b *testing.B) { benchmark_TreeSearch(b, 30000) }
+func Benchmark_TreeSort10(b *testing.B)      { benchmark_TreeSort(b, 10) }
+func Benchmark_TreeSort100(b *testing.B)     { benchmark_TreeSort(b, 100) }
+func Benchmark_TreeSort1000(b *testing.B)    { benchmark_TreeSort(b, 1000) }
+func Benchmark_TreeSort10000(b *testing.B)   { benchmark_TreeSort(b, 10000) }
+func Benchmark_TreeSort30000(b *testing.B)   { benchmark_TreeSort(b, 30000) }
 func Benchmark_SortInsert10(b *testing.B)    { benchmark_SortInsert(b, 10) }
 func Benchmark_SortInsert100(b *testing.B)   { benchmark_SortInsert(b, 100) }
 func Benchmark_SortInsert1000(b *testing.B)  { benchmark_SortInsert(b, 1000) }
@@ -282,3 +314,8 @@ func Benchmark_SortSearch100(b *testing.B)   { benchmark_SortSearch(b, 100) }
 func Benchmark_SortSearch1000(b *testing.B)  { benchmark_SortSearch(b, 1000) }
 func Benchmark_SortSearch10000(b *testing.B) { benchmark_SortSearch(b, 10000) }
 func Benchmark_SortSearch30000(b *testing.B) { benchmark_SortSearch(b, 30000) }
+func Benchmark_SortSort10(b *testing.B)      { benchmark_SortSort(b, 10) }
+func Benchmark_SortSort100(b *testing.B)     { benchmark_SortSort(b, 100) }
+func Benchmark_SortSort1000(b *testing.B)    { benchmark_SortSort(b, 1000) }
+func Benchmark_SortSort10000(b *testing.B)   { benchmark_SortSort(b, 10000) }
+func Benchmark_SortSort30000(b *testing.B)   { benchmark_SortSort(b, 30000) }
