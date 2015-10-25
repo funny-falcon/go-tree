@@ -1,6 +1,7 @@
 package tree
 
 type direction bool
+type index int32
 
 const MaxSize = (1 << 30) - 1
 
@@ -11,9 +12,9 @@ const (
 )
 
 type node struct {
-	_parent int32
-	_left   int32
-	_right  int32
+	_parent index
+	_left   index
+	_right  index
 	height  int8
 }
 
@@ -27,8 +28,8 @@ func (n *node) link(i direction) int {
 
 func (n *node) set_link(i direction, ix int) {
 	if i == right {
-		n._right = int32(ix)
+		n._right = index(ix)
 	} else {
-		n._left = int32(ix)
+		n._left = index(ix)
 	}
 }

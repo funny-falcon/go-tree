@@ -151,6 +151,72 @@ func Test_Delete(t *testing.T) {
 	test_delete(t, data, &tree, 1000)
 }
 
+func Test_InitSorted(t *testing.T) {
+	data := sort.IntSlice{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
+	tree := Tree{}
+	tree.InitSorted(data.Len())
+	check(t, data, &tree, tree.root)
+	check_iter(t, data, &tree)
+
+	data = sort.IntSlice{}
+	f := map[int]struct{}{}
+	tree = Tree{}
+	for i := 100; i > 0; i-- {
+		v := rand.Intn(1000)
+		if _, ok := f[v]; ok {
+			continue
+		}
+		data = append(data, v)
+	}
+	sort.Sort(data)
+	tree.InitSorted(data.Len())
+	check(t, data, &tree, tree.root)
+	check_iter(t, data, &tree)
+}
+
+type tstruct struct {
+	I  int
+	Ix int
+}
+
+type tslice []tstruct
+
+func (b tslice) Len() int           { return len(b) }
+func (b tslice) Less(i, j int) bool { return b[i].I < b[j].I }
+func (b tslice) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b tslice) CheckSorted(t *testing.T) {
+	sz := b.Len()
+	for i := 1; i < sz; i++ {
+		if b.Less(i, i-1) {
+			t.Fatalf("b[%d].I=%v > b[%d].I=%v",
+				i-1, b[i-1].I, i, b[i].I)
+		} else if !b.Less(i-1, i) && b[i-1].Ix > b[i].Ix {
+			t.Logf("b[%d].I=%v == b[%d].I=%v",
+				i-1, b[i-1].I, i, b[i].I)
+			t.Fatalf("b[%d].Ix=%v > b[%d].Ix=%v",
+				i-1, b[i-1].Ix, i, b[i].Ix)
+		}
+	}
+}
+
+func trand(sz int) tslice {
+	res := make(tslice, sz)
+	for i := 0; i < sz; i++ {
+		res[i].I = rand.Intn(sz / 4)
+		res[i].Ix = i
+	}
+	return res
+}
+
+func Test_StableSort(t *testing.T) {
+	sizes := [...]int{10, 50, 150}
+	for _, sz := range sizes {
+		res := trand(sz)
+		StableSort(res)
+		res.CheckSorted(t)
+	}
+}
+
 type bigstruct struct {
 	I  int
 	Sl [2][]int
@@ -165,15 +231,8 @@ func (b benchslice) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 func random_tree(data *benchslice, tree *Tree, n int) {
 	for j := 0; j < n; j++ {
 		v := rand.Intn(1 << 30)
-		ix := tree.Search(func(i int) bool {
-			return (*data)[i].I >= v
-		})
-		if ix < tree.Len() && (*data)[ix].I == v {
-			j--
-			continue
-		}
 		*data = append(*data, bigstruct{I: v})
-		tree.InsertBefore(ix)
+		tree.Insert(*data)
 	}
 }
 
@@ -183,10 +242,6 @@ func random_slice(data *benchslice, n int) {
 		ix := sort.Search(len(*data), func(i int) bool {
 			return (*data)[i].I >= v
 		})
-		if ix < len(*data) && (*data)[ix].I == v {
-			j--
-			continue
-		}
 		*data = append(*data, bigstruct{})
 		copy((*data)[ix+1:], (*data)[ix:])
 		(*data)[ix] = bigstruct{I: v}
@@ -234,9 +289,7 @@ func benchmark_TreeSort(b *testing.B, n int) {
 		data := benchslice{}
 		tree := Tree{}
 		random_tree(&data, &tree, n)
-		for j := 0; j < n; j++ {
-			tree.Delete(data, tree.Max())
-		}
+		tree.LeaveSorted(data)
 		if !sort.IsSorted(data) {
 			panic("not sorted")
 		}
@@ -289,6 +342,19 @@ func benchmark_SortSort(b *testing.B, n int) {
 	}
 }
 
+func benchmark_SortStable(b *testing.B, n int) {
+	for i := 0; i < b.N; i++ {
+		data := benchslice{}
+		for j := 0; j < n; j++ {
+			data = append(data, bigstruct{I: rand.Intn(1 << 30)})
+		}
+		sort.Stable(data)
+		if !sort.IsSorted(data) {
+			panic("not sorted")
+		}
+	}
+}
+
 func Benchmark_TreeInsert10(b *testing.B)    { benchmark_TreeInsert(b, 10) }
 func Benchmark_TreeInsert100(b *testing.B)   { benchmark_TreeInsert(b, 100) }
 func Benchmark_TreeInsert1000(b *testing.B)  { benchmark_TreeInsert(b, 1000) }
@@ -319,3 +385,8 @@ func Benchmark_SortSort100(b *testing.B)     { benchmark_SortSort(b, 100) }
 func Benchmark_SortSort1000(b *testing.B)    { benchmark_SortSort(b, 1000) }
 func Benchmark_SortSort10000(b *testing.B)   { benchmark_SortSort(b, 10000) }
 func Benchmark_SortSort30000(b *testing.B)   { benchmark_SortSort(b, 30000) }
+func Benchmark_SortStable10(b *testing.B)    { benchmark_SortStable(b, 10) }
+func Benchmark_SortStable100(b *testing.B)   { benchmark_SortStable(b, 100) }
+func Benchmark_SortStable1000(b *testing.B)  { benchmark_SortStable(b, 1000) }
+func Benchmark_SortStable10000(b *testing.B) { benchmark_SortStable(b, 10000) }
+func Benchmark_SortStable30000(b *testing.B) { benchmark_SortStable(b, 30000) }

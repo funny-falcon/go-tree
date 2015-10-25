@@ -2,22 +2,28 @@
 // for sort.Interface and could be used for searching like sort.Search
 //
 //     data := sort.IntSlice{}
-//     tree := &tree.Tree{}
+//     index := &tree.Tree{}
 //     for i:=0; i<N; i++ {
 //         data = append(data, rand.Intn(1<<30))
-//         tree.Insert(data)
+//         index.Insert(data)
 //     }
 //
 //     v := rand.Intn(1<<30)
-//     ix := tree.Search(func(i int) bool {
+//     ix := index.Search(func(i int) bool {
 //         return data[i] >= v
 //     })
 //     fmt.Println("First greater or equal: data[%d] = %d > %d", ix, data[ix], v)
 //
 //     fmt.Println("Min:", data[tree.Min()], " Max:", data[tree.Max()])
-//     for ix := tree.Next(-1); ix < tree.Len(); ix = tree.Next(ix) {
+//     for ix := index.Next(-1); ix < index.Len(); ix = index.Next(ix) {
 //         fmt.Printf("%d ", data[ix])
 //     }
+//
+// Insertion of duplicates is done in stable order.
+// So that, tree could be used as stable sort (aka binary tree sort).
+//
+//     index.LeaveSorted(data)
+//     tree.StableSort(data)
 //
 // Limitation: index is limited to int32, so that maximum size is 2**31-1
 package tree
@@ -167,7 +173,8 @@ func (t *Tree) Prev(i int) int {
 }
 
 // Insert adds in-order element of sort.Interface at index Tree.Len()
-// You should not put element with key equal to existed key.
+// It doesn't check for equality, so duplicates are inserted in
+// stable order.
 func (t *Tree) Insert(data sort.Interface) {
 	ix := len(t.nodes)
 	if ix == MaxSize {
@@ -182,7 +189,7 @@ func (t *Tree) Insert(data sort.Interface) {
 	cur := t.root
 	curnode := &t.nodes[cur]
 	for {
-		dir = direction(data.Less(int(cur), ix))
+		dir = direction(!data.Less(ix, int(cur)))
 
 		if curnode.link(dir) == null {
 			break
@@ -191,7 +198,7 @@ func (t *Tree) Insert(data sort.Interface) {
 		curnode = &t.nodes[cur]
 	}
 	node := &t.nodes[ix]
-	node._parent = int32(cur)
+	node._parent = index(cur)
 	curnode.set_link(dir, ix)
 	if dir == right {
 		if cur == t.max {
@@ -232,7 +239,7 @@ func (t *Tree) InsertBefore(cur int) {
 		}
 	}
 	node := &t.nodes[ix]
-	node._parent = int32(cur)
+	node._parent = index(cur)
 	curnode.set_link(dir, ix)
 	if dir == right {
 		if cur == t.max {
@@ -286,7 +293,7 @@ func (t *Tree) DeleteAndPrev(data sort.Interface, ix int) int {
 
 // LeaveSorted breaks link between Tree and sort.Interface
 // and leaves sort.Interface sorted.
-func (t *Tree) LeaveSorted(data sort.Interface, ix int) {
+func (t *Tree) LeaveSorted(data sort.Interface) {
 	for i := t.Len(); i > 0; i-- {
 		t.Delete(data, t.max)
 	}
@@ -294,6 +301,9 @@ func (t *Tree) LeaveSorted(data sort.Interface, ix int) {
 
 // Init fills tree structure accordantly to data in sort.Inteface
 func (t *Tree) Init(data sort.Interface) {
+	if data.Len() > MaxSize {
+		panic("tree size exceed maximum")
+	}
 	*t = Tree{}
 	t.nodes = make([]node, 0, data.Len())
 	for i := data.Len(); i > 0; i-- {
@@ -303,11 +313,28 @@ func (t *Tree) Init(data sort.Interface) {
 
 // InitSorted fills tree structure assuming data is sorted
 func (t *Tree) InitSorted(size int) {
-	*t = Tree{}
-	t.nodes = make([]node, 0, size)
-	for i := 0; i < size; i++ {
-		t.InsertBefore(i)
+	if size > MaxSize {
+		panic("tree size exceed maximum")
 	}
+	*t = Tree{max: size - 1}
+	t.nodes = make([]node, size)
+	root, _ := t.initSorted(0, index(size), null)
+	t.root = int(root)
+	t.max = size - 1
+}
+
+func (t *Tree) initSorted(a, b, p index) (m index, d int8) {
+	if a == b {
+		return null, 0
+	}
+	m = a + (b-a)/2
+	n := &t.nodes[m]
+	n._parent = index(p)
+	var dl, dr int8
+	n._left, dl = t.initSorted(a, m, m)
+	n._right, dr = t.initSorted(m+1, b, m)
+	n.height = max_i8(dl, dr) + 1
+	return m, n.height
 }
 
 func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
@@ -340,7 +367,7 @@ func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 			rix := int(node._right)
 			parent.set_link(pdir, rix)
 			if rix != null {
-				t.nodes[rix]._parent = int32(pix)
+				t.nodes[rix]._parent = index(pix)
 				if t.min == ix {
 					t.min = rix
 				}
@@ -356,7 +383,7 @@ func (t *Tree) del(data sort.Interface, node *node, ix, next int) int {
 			lix := int(node._left)
 			parent.set_link(pdir, lix)
 			if lix != null {
-				t.nodes[lix]._parent = int32(pix)
+				t.nodes[lix]._parent = index(pix)
 				if t.max == ix {
 					t.max = lix
 				}
@@ -398,7 +425,7 @@ func (t *Tree) fixlinks(inode *node, i, j int) {
 		if int(lnode._parent) != i {
 			panic("tree broken")
 		}
-		lnode._parent = int32(j)
+		lnode._parent = index(j)
 	} else if t.min == i {
 		t.min = j
 	}
@@ -407,7 +434,7 @@ func (t *Tree) fixlinks(inode *node, i, j int) {
 		if int(rnode._parent) != i {
 			panic("tree broken")
 		}
-		rnode._parent = int32(j)
+		rnode._parent = index(j)
 	} else if t.max == i {
 		t.max = j
 	}
@@ -430,8 +457,8 @@ func (t *Tree) balance(cur int) {
 		chld := node.link(dir)
 		chnode := &t.nodes[chld]
 		hs := [2]int8{
-			t.height(int32(chnode.link(!dir))),
-			t.height(int32(chnode.link(dir)))}
+			t.height(index(chnode.link(!dir))),
+			t.height(index(chnode.link(dir)))}
 		if hs[1]-hs[0] < 0 {
 			/* rotate child */
 			t.rotate(chld, !dir)
@@ -452,11 +479,11 @@ func (t *Tree) rotate(ix int, dir direction) {
 	chnode := &t.nodes[ch]
 	node.set_link(dir, chnode.link(!dir))
 	if node.link(dir) != null {
-		t.nodes[node.link(dir)]._parent = int32(ix)
+		t.nodes[node.link(dir)]._parent = index(ix)
 	}
 	chnode.set_link(!dir, ix)
-	node._parent = int32(ch)
-	chnode._parent = int32(p)
+	node._parent = index(ch)
+	chnode._parent = index(p)
 	t.fixheight(node)
 	t.fixheight(chnode)
 	if p != null {
@@ -474,7 +501,7 @@ func (t *Tree) fixheight(n *node) {
 	n.height = max_i8(lh, rh) + 1
 }
 
-func (t *Tree) height(ix int32) int8 {
+func (t *Tree) height(ix index) int8 {
 	if ix == null {
 		return 0
 	}
@@ -497,6 +524,16 @@ func (t *Tree) bal(ix int) int8 {
 	lh := t.height(node._left)
 	rh := t.height(node._right)
 	return lh - rh
+}
+
+// StableSort performs stable sort of data.
+// It is well known "binary tree sort":
+// binary tree is constructed and used to restore order.
+// It uses O(N) swaps, O(NlogN) comparisons and O(N) space.
+func StableSort(data sort.Interface) {
+	tree := Tree{}
+	tree.Init(data)
+	tree.LeaveSorted(data)
 }
 
 func max_i8(i, j int8) int8 {
